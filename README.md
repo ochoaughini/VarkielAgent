@@ -1,6 +1,8 @@
 # Varkiel Agent Architecture  
 [![License](https://img.shields.io/badge/License-Lexsight%20Proprietary-red)](LICENSE.txt)
 [![Coverage](https://img.shields.io/badge/Coverage-97%25-brightgreen)](./coverage)
+[![CI Status](https://github.com/ochoaughini/VarkielAgent/actions/workflows/ci.yml/badge.svg)](https://github.com/ochoaughini/VarkielAgent/actions)
+[![Coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/ochoaughini/.../coverage.json)](https://github.com/ochoaughini/VarkielAgent)
 
 > **Lexsight LLC Proprietary Software** – 2025 Lexsight LLC.  
 > Redistribution or derivative use outside the scope of the Lexsight LLC Proprietary Software License Agreement is strictly prohibited.
@@ -101,6 +103,16 @@ Key Features
 	•	Cognitive state resonance tracking – fine-grained affect modulation
 	•	Meaning synthesis under compression – continual representational innovation
 	•	Web-based interactive interface – live visualisations of constraint trees, embeddings, and resonance trajectories
+
+⸻
+
+## License Interaction
+
+Varkiel Agent is proprietary software, while the Constraint Lattice component is MIT licensed. This means:
+
+- You may use and modify the Constraint Lattice independently under MIT terms
+- Combining Constraint Lattice with Varkiel Agent requires a commercial license
+- Any derivative work of Varkiel Agent must adhere to the Lexsight LLC Proprietary Software License
 
 ⸻
 
