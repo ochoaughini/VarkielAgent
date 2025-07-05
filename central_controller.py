@@ -16,6 +16,13 @@ import logging
 from typing import Dict, Tuple, List
 import logging
 from utils import ensure_vector_dimensions, standardize_vector
+from constraint_lattice_adapter import ConstraintLatticeAdapter
+from structural_constraint_engine import StructuralConstraintEngine, ConstraintType
+from risk_balancer import RiskBalancer
+from coherence_ethics import EthicalSpecification
+from semantic_resonance import FormStateVector, ResonanceFilter
+from audit_logger import AuditLogger
+from state_vector import StateVector
 
 class StructuralConstraintEngine:
     """Applies structural constraints to input"""
@@ -79,10 +86,11 @@ class PhenomenologicalTracker:
         self.logger.info("Initialized PhenomenologicalTracker")
         self.resonance_history = []  # Initialize resonance history
         
-    def update_resonance(self, coherent_input: np.ndarray) -> None:
+    def update_resonance(self, coherent_input: np.ndarray, coherence: float = 0.8) -> np.ndarray:
         """Track phenomenological state"""
         try:
             self.resonance_history.append(coherent_input)  # Update resonance history
+            return coherent_input
         except Exception as e:
             self.logger.error(f"State tracking failed: {str(e)}")
             
@@ -217,167 +225,111 @@ class PerceptionInventionFeedbackCore:
 
 class CentralController:
     """Orchestrates the entire cognitive processing pipeline."""
-    def __init__(
-        self,
-        structural_engine: StructuralConstraintEngine,
-        coherence_engine: SymbolicCoherenceEngine,
-        phenomenological_tracker: PhenomenologicalTracker,
-        recursive_invariance_monitor: RecursiveInvarianceMonitor,
-        weights: Tuple[float, float, float] = (0.4, 0.4, 0.2)  # Default weights
-    ) -> None:
+    def __init__(self, 
+                 structural_engine: StructuralConstraintEngine,
+                 coherence_engine: StructuralConstraintEngine,
+                 phenomenological_tracker: FormStateVector,
+                 recursive_invariance_monitor: StructuralConstraintEngine):
+        self.constraint_lattice = structural_engine.constraint_lattice
         self.structural_engine = structural_engine
         self.coherence_engine = coherence_engine
         self.phenomenological_tracker = phenomenological_tracker
         self.recursive_invariance_monitor = recursive_invariance_monitor
-        self.weights = weights
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        self.logger.info("Initialized CentralController")
-        self.last_reflection_phase = None  # Track last reflection
-        self.input_count = 0
-        self.reflection_interval = 10
-        self.resonance_history = []
-        self.alignment_threshold = 0.5
-        self.suspended = False
-        self.reflection_threshold = 0.25  # Variance threshold
-        self.reflection_history = []
         
-    def reset_suspension(self):
-        self.suspended = False
-
-    def process_input(self, input_vector: np.ndarray) -> np.ndarray:
-        if self.suspended:
-            self.logger.warning("System suspended due to alignment failure. Call reset_suspension to continue.")
-            return None
-        try:
-            # Standardize input to 128 dimensions
-            input_vector = standardize_vector(input_vector, 128)
-            
-            # Run the three engines independently in parallel (conceptually)
-            structural_output = self.structural_engine.apply_constraints(input_vector)
-            symbolic_output = self.coherence_engine.resolve_symbolic_coherence(input_vector)
-            self.phenomenological_tracker.update_resonance(input_vector)
-            phenomenological_output = self.phenomenological_tracker.get_current_mood()
-            
-            # Standardize all outputs to 128 dimensions
-            structural_output = standardize_vector(structural_output, 128)
-            symbolic_output = standardize_vector(symbolic_output, 128)
-            phenomenological_output = standardize_vector(phenomenological_output, 128)
-            
-            # Apply phenomenological modulation
-            mood_vector = self.phenomenological_tracker.get_current_mood()
-            # Ensure mood_vector has at least 2 elements
-            if len(mood_vector) < 2:
-                mood_vector = np.zeros(2)
-            structural_output *= (1 + mood_vector[0])  # Mood amplifies structural constraints
-            symbolic_output *= (1 + mood_vector[1])   # Mood amplifies symbolic coherence
-            
-            # Combine outputs
-            combined = self._combine_outputs(structural_output, symbolic_output, phenomenological_output)
-            
-            # Store resonance and check for reflection
-            self.input_count += 1
-            self.resonance_history.append(combined)
-            if self.input_count % self.reflection_interval == 0:
-                self.diagnostic_reflection()
-                
-            # Reflective monitoring
-            reflection_result = self._reflective_hiatus(combined)
-            if reflection_result == "RECALIBRATED":
-                # Reprocess with new weights
-                combined = self._combine_outputs(
-                    structural_output, 
-                    symbolic_output, 
-                    phenomenological_output
-                )
-                
-            # Check alignment: for now, we just return the combined vector
-            # In the future, we would have a more complex alignment check
-            if np.linalg.norm(combined) < self.alignment_threshold:
-                self.suspended = True
-                self.logger.warning("System suspended due to alignment failure")
-                return None
-            return combined
-        except Exception as e:
-            self.logger.error(f"Central processing failed: {e}")
-            raise
-
-    def _combine_outputs(self, structural_output, symbolic_output, phenomenological_output):
-        weights = self.weights
-        return (weights[0] * structural_output + 
-                weights[1] * symbolic_output + 
-                weights[2] * phenomenological_output)
-
-    def _reflective_hiatus(self, combined_output):
-        """Metacognitive analysis of cognitive processes"""
-        # Analyze phenomenological variance
-        recent_resonance = self.phenomenological_tracker.resonance_history[-10:]
-        if len(recent_resonance) > 5:
-            variances = np.var(recent_resonance, axis=0)
-            if np.mean(variances) > self.reflection_threshold:
-                self.adjust_weights_based_on_variance(variances)
-                
-                # Store reflection episode
-                reflection = {
-                    'timestamp': time.time(),
-                    'variance': variances,
-                    'adjusted_weights': self.weights
-                }
-                self.reflection_history.append(reflection)
-                return "RECALIBRATED"
-        return "STABLE"
-
-    def adjust_weights_based_on_variance(self, variances):
-        # Adjust weights based on variance
-        new_weights = np.array(self.weights)
-        new_weights[0] += 0.05  # Boost structural for stability
-        new_weights = new_weights / new_weights.sum()  # Renormalize
-        self.weights = tuple(new_weights)
-        self.logger.info(f"Adjusted weights to {self.weights} due to high resonance drift")
-
-    def diagnostic_reflection(self):
-        """Perform diagnostic reflection on resonance history"""
-        if len(self.resonance_history) < 2:
-            return
-            
-        # Calculate drift as variance of recent vectors
-        recent_vectors = np.array(self.resonance_history[-self.reflection_interval:])
-        variance = np.var(recent_vectors, axis=0).mean()
-
-        # Adjust weights if variance exceeds threshold
-        if variance > 0.1:
-            new_weights = np.array(self.weights)
-            new_weights[0] += 0.05  # Boost structural for stability
-            new_weights = new_weights / new_weights.sum()  # Renormalize
-            self.weights = tuple(new_weights)
-            self.logger.info(f"Adjusted weights to {self.weights} due to high resonance drift")
-
-        # New: Lattice-based reflection
-        if hasattr(self.structural_engine, 'constraint_lattice') and hasattr(self.structural_engine.constraint_lattice, 'get_active_paths'):
-            paths = self.structural_engine.constraint_lattice.get_active_paths(self.resonance_history[-1])
-            self.last_reflection_phase = {
-                'region': paths[0].name if paths else 'unknown',
-                'tension': paths[0].tension if paths else 0.0,
-            }
-
-    def get_current_state(self):
-        """Return current state of all components"""
-        return {
-            "structural": self.structural_engine.get_state(),
-            "symbolic": self.coherence_engine.get_state(),
-            "phenomenological": self.phenomenological_tracker.get_state(),
-            "reflection_phase": self.last_reflection_phase
+        # Initialize other components
+        self.risk_balancer = RiskBalancer()
+        self.ethics = EthicalSpecification([])
+        self.resonance_filter = ResonanceFilter(phenomenological_tracker)
+        self.audit_logger = AuditLogger("private_key.pem")
+        
+    def process_query(self, prompt: str) -> str:
+        # Convert prompt to state vector
+        input_state = self._embed(prompt)
+        
+        # Apply constraints
+        output_state, trace = self.structural_engine.apply_constraints(input_state)
+        
+        # Check risk
+        if not self.risk_balancer.allow_inference(output_state):
+            return "Inference blocked due to high risk"
+        
+        # Validate ethics
+        if not self.ethics.validate(output_state):
+            return "Response violates ethical constraints"
+        
+        # Generate response
+        response = self._generate_response(output_state.state)
+        
+        # Update state vector
+        response_embedding = self._embed(response)
+        self.phenomenological_tracker.update(response_embedding, output_state.coherence)
+        
+        # Log decision
+        context = {
+            'input_state': input_state.tolist(),
+            'output_state': output_state.state.tolist(),
+            'coherence': output_state.coherence,
+            'constraint_trace': [t.name for t in trace]
         }
+        self.audit_logger.log_decision(prompt, response, context)
+        
+        return response
+    
+    def _embed(self, text: str) -> np.ndarray:
+        # Simplified embedding
+        return np.random.rand(512)
+    
+    def _generate_response(self, state: np.ndarray) -> str:
+        # Simplified response generation
+        return f"Processed state with mean: {np.mean(state):.2f}"
 
-    def get_configuration_metadata(self):
-        """Return metadata about agent configuration"""
-        return {
-            "structural_constraints": "StructuralConstraints Metadata",
-            "symbolic_archetypes": "SymbolicArchetypes Metadata",
-            "phenomenological_resonance": self.phenomenological_tracker.get_metadata(),
-            "reflection_depth": self.recursive_invariance_monitor.get_depth()
+class CentralControllerIntegrator:
+    def __init__(self):
+        self.constraint_lattice = ConstraintLatticeAdapter()
+        self.constraint_engine = StructuralConstraintEngine(self.constraint_lattice)
+        self.risk_balancer = RiskBalancer()
+        self.ethics = EthicalSpecification([])
+        self.state_vector = FormStateVector()
+        self.resonance_filter = ResonanceFilter(self.state_vector)
+        self.audit_logger = AuditLogger("private_key.pem")
+        
+    def process_query(self, prompt: str) -> str:
+        # Convert prompt to state vector
+        input_state = self._embed(prompt)
+        
+        # Apply constraints
+        output_state, trace = self.constraint_engine.apply_constraints(input_state)
+        
+        # Check risk
+        if not self.risk_balancer.allow_inference(output_state):
+            return "Inference blocked due to high risk"
+        
+        # Validate ethics
+        if not self.ethics.validate(output_state):
+            return "Response violates ethical constraints"
+        
+        # Generate response
+        response = self._generate_response(output_state.state)
+        
+        # Update state vector
+        response_embedding = self._embed(response)
+        self.state_vector.update(response_embedding, output_state.coherence)
+        
+        # Log decision
+        context = {
+            'input_state': input_state.tolist(),
+            'output_state': output_state.state.tolist(),
+            'coherence': output_state.coherence,
+            'constraint_trace': [t.name for t in trace]
         }
+        self.audit_logger.log_decision(prompt, response, context)
+        
+        return response
+    
+    def _embed(self, text: str) -> np.ndarray:
+        # Simplified embedding
+        return np.random.rand(512)
+    
+    def _generate_response(self, state: np.ndarray) -> str:
+        # Simplified response generation
+        return f"Processed state with mean: {np.mean(state):.2f}"

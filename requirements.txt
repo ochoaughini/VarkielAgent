@@ -1,4 +1,4 @@
-numpy==1.26.4
+numpy
 sympy
 torch
 networkx
@@ -12,6 +12,8 @@ safety
 bandit
 gunicorn
 prometheus_client==0.20.0
-scikit-learn==1.5.0
+scikit-learn
 matplotlib
+pytest-mock==3.14.0
+cryptography
 # Removed heroku as it's not available for Python 3.12+

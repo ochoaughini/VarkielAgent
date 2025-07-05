@@ -8,6 +8,11 @@ from structural_constraint_engine import ConstraintLatticeWrapper, StructuralCon
 from symbolic_coherence_engine import SymbolicCoherenceEngine
 from phenomenological_tracker import PhenomenologicalTracker
 from coherence_monitor import RecursiveInvarianceMonitor
+from state_vector import StateVector  # Import StateVector class
+import logging  # Import logging module
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 # Initialize controller components
 lattice_wrapper = ConstraintLatticeWrapper([])
@@ -121,17 +126,23 @@ for i in range(num_iterations):
     
     # Structural constraint benchmark
     struct_start = time.time()
-    constrained = controller.structural_engine.apply_constraints(input_vector)
+    constrained_state = structural_engine.apply_constraints(input_vector)
+    
+    # Verify state vector type
+    if not isinstance(constrained_state, StateVector):
+        logger.error(f"Expected StateVector, got {type(constrained_state)}")
+        constrained_state = StateVector(constrained_state, coherence_level=0.0)
+    
     latencies["structural"].append(time.time() - struct_start)
     
     # Symbolic coherence benchmark
     symbolic_start = time.time()
-    coherent = controller.coherence_engine.resolve_symbolic_coherence(constrained)
+    coherent = coherence_engine.resolve_symbolic_coherence(constrained_state)
     latencies["symbolic"].append(time.time() - symbolic_start)
     
     # Phenomenological benchmark
     phenom_start = time.time()
-    controller.phenomenological_tracker.update_resonance(coherent)
+    controller.phenomenological_tracker.update_resonance(coherent, 0.8)
     latencies["phenomenological"].append(time.time() - phenom_start)
     
     # Total processing time

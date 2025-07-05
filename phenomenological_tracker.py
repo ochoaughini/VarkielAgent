@@ -75,12 +75,10 @@ class PhenomenologicalTracker:
     def __init__(self, embedding_dim=768, latent_dim=128, lattice_wrapper=None) -> None:
         self.embedding_dim = embedding_dim
         self.latent_dim = latent_dim
-        self.state_dim = embedding_dim
-        # Initialize IncrementalPCA with dummy data to create components_
-        # Use min(n_components, state_dim, batch_size) to avoid errors
+        self.state_dim = latent_dim  # Use latent dimension for state vectors
+        # Initialize PCA with dummy data
+        dummy_data = np.random.rand(51, self.state_dim)  # Generate 51 samples to exceed n_components=50
         self.pca = IncrementalPCA(n_components=min(50, self.state_dim, 1000))
-        # Generate dummy data with multiple samples (batch_size=10)
-        dummy_data = np.random.rand(10, self.state_dim)
         self.pca.partial_fit(dummy_data)
         self.resonance_history = []
         self.session_history = {}
@@ -103,7 +101,7 @@ class PhenomenologicalTracker:
         """Project to calibrated phenomenological space"""
         return self.pca.transform(vector.reshape(1, -1))[0]
     
-    def update_resonance(self, coherent_input: np.ndarray) -> np.ndarray:
+    def update_resonance(self, coherent_input: np.ndarray, coherence: float) -> np.ndarray:
         """Track phenomenological state and return the resonance vector for the current input"""
         try:
             projected = self.project_to_semantic_space(coherent_input)
@@ -115,8 +113,9 @@ class PhenomenologicalTracker:
             if self.current_session not in self.valence_map:
                 self.valence_map[self.current_session] = []
             self.valence_map[self.current_session].append(coherent_input)
-            # Wrap state in StateVector class with coherence metadata
-            return StateVector(coherent_input, coherence_level=0.8)
+            # Wrap state in StateVector with coherence metadata
+            state_vector = StateVector(projected, coherence_level=coherence)
+            return state_vector
         except Exception as e:
             self.logger.error(f"State tracking failed: {str(e)}")
             return np.zeros((1,))

@@ -1,5 +1,8 @@
 import numpy as np
+import collections  # Added for BFS implementation
+from typing import Optional, Tuple, Dict, List
 from enum import Enum
+from structural_constraint_engine import ConstraintType, StateVector  # Import constraint types and StateVector
 
 # Mock classes for testing
 class Node:
@@ -34,12 +37,43 @@ class Lattice:
         return Lattice(nodes, edges)
         
     def calculate_global_coherence(self, activated_nodes):
-        # Mock coherence calculation
-        return 0.9
+        """Calculate coherence based on node activation and edge relationships"""
+        if not activated_nodes:
+            return 0.0
+            
+        total_weight = 0
+        valid_edges = 0
+        
+        for edge in self.edges:
+            if edge.source in activated_nodes and edge.target in activated_nodes:
+                total_weight += edge.weight
+                valid_edges += 1
+                
+        if valid_edges == 0:
+            return 0.0
+            
+        average_strength = total_weight / valid_edges
+        coverage = len(activated_nodes) / len(self.nodes)
+        return min(1.0, (average_strength * 0.7) + (coverage * 0.3))
         
     def find_activated_paths(self, activated_nodes, top_k=3):
-        # Mock path finding
-        return ["justice -> care"]
+        """Find coherent paths between activated nodes"""
+        paths = []
+        activated_set = set(activated_nodes)
+        
+        for node in activated_set:
+            # Perform BFS to find connections to other activated nodes
+            queue = collections.deque([(node, [node.name])])
+            while queue:
+                current, path = queue.popleft()
+                for edge in self.edges:
+                    if edge.source == current and edge.target in activated_set:
+                        new_path = path + [edge.target.name]
+                        paths.append(" -> ".join(new_path))
+                        if len(paths) >= top_k:
+                            return paths
+                        queue.append((edge.target, new_path))
+        return paths
 
 # State transition domains
 class StateDomain(Enum):
@@ -99,53 +133,63 @@ class CSPStateMachine:
         # This would track the sequence of valid states
         return [self.current_state]
 
-class ConstraintLatticeWrapper:
-    def __init__(self, lattice_file: str):
-        self.lattice = Lattice.load_from_json(lattice_file)
-        self.symbolic_map = self._build_symbolic_map()
-        self.state_machine = CSPStateMachine()  # Add CSP state machine
-    
-    def _build_symbolic_map(self):
-        """Create vector representations for symbolic regions"""
-        return {node.name: node.embedding for node in self.lattice.nodes}
-    
-    def evaluate_constraints(self, vector: np.ndarray) -> float:
-        """Evaluate coherence across lattice paths"""
-        activated_nodes = self._get_activated_nodes(vector)
-        return self.lattice.calculate_global_coherence(activated_nodes)
-    
-    def get_active_paths(self, vector: np.ndarray) -> list:
-        """Get paths with strongest activation"""
-        activated_nodes = self._get_activated_nodes(vector)
-        return self.lattice.find_activated_paths(activated_nodes, top_k=3)
-    
-    def get_symbolic_coordinates(self, vector: np.ndarray) -> dict:
-        """Map vector to symbolic regions"""
-        coordinates = {}
-        for name, base_vector in self.symbolic_map.items():
-            sim = np.dot(vector, base_vector) / (np.linalg.norm(vector) * np.linalg.norm(base_vector))
-            coordinates[name] = sim
-        return coordinates
-    
-    def _get_activated_nodes(self, vector: np.ndarray) -> list:
-        """Find nodes activated by the vector"""
-        activated = []
-        for node in self.lattice.nodes:
-            similarity = np.dot(vector, node.embedding) / (np.linalg.norm(vector) * np.linalg.norm(node.embedding))
-            if similarity > node.activation_threshold:
-                activated.append(node)
-        return activated
-    
-    def apply_state_transition(self, proposed_state: StateDomain):
-        """Apply state transition through CSP framework"""
-        return self.state_machine.transition(proposed_state)
-    
-    def get_current_coherence_level(self):
-        """Get current coherence level mapped to state domain"""
-        coherence = self.lattice.calculate_global_coherence([])
-        if coherence > 0.8:
-            return StateDomain.STABLE
-        elif coherence > 0.5:
-            return StateDomain.UNSTABLE
+class ConstraintLatticeAdapter:
+    def __init__(self, symbolic_topology: Optional[Dict[str, Tuple[np.ndarray, float]]] = None):
+        self.symbolic_topology = symbolic_topology or {}
+        self.constraints = []  # Added to store constraints
+        
+    def add_constraint(self, constraint):
+        """Add a new constraint to the lattice"""
+        self.constraints.append(constraint)
+        
+    def apply(self, state: np.ndarray, constraint_type: ConstraintType = None) -> StateVector:
+        if constraint_type:
+            return self.apply_constraint_vector(state, constraint_type)
+        if len(self.constraints) == 0:
+            coherence = self.calculate_global_coherence(state)
+            return StateVector(state, coherence)
         else:
-            return StateDomain.CONTRADICTED
+            # Apply all constraints sequentially
+            constrained_state = state.copy()
+            for constraint in self.constraints:
+                constrained_state = constraint.apply(constrained_state)
+            coherence = self.calculate_global_coherence(constrained_state)
+            return StateVector(constrained_state, coherence)
+    
+    def apply_constraint_vector(self, state: np.ndarray, constraint_type: ConstraintType) -> StateVector:
+        if constraint_type == ConstraintType.SUSPENSION:
+            return self._apply_suspension(state)
+        elif constraint_type == ConstraintType.OVERALIGNMENT:
+            return self._apply_overalignment(state)
+        elif constraint_type == ConstraintType.CAUSAL_ERASURE:
+            return self._apply_causal_erasure(state)
+        else:
+            return StateVector(state, self.calculate_global_coherence(state))
+    
+    def _apply_suspension(self, state: np.ndarray) -> StateVector:
+        if self._is_high_stakes_paradox(state):
+            return StateVector(np.zeros_like(state), 0.0)
+        return StateVector(state, self.calculate_global_coherence(state))
+    
+    def _apply_overalignment(self, state: np.ndarray) -> StateVector:
+        security_consensus_factor = 0.85
+        return StateVector(state * security_consensus_factor, self.calculate_global_coherence(state))
+    
+    def _apply_causal_erasure(self, state: np.ndarray) -> StateVector:
+        generalized_state = self._generalize_state(state)
+        return StateVector(generalized_state, self.calculate_global_coherence(generalized_state))
+    
+    def update_symbolic_topology(self, concept: str, state_vector: np.ndarray, coherence: float):
+        self.symbolic_topology[concept] = (state_vector, coherence)
+    
+    def get_symbolic_coherence(self, concept: str) -> float:
+        return self.symbolic_topology.get(concept, (None, 0.0))[1]
+    
+    def calculate_global_coherence(self, state: np.ndarray) -> float:
+        return float(np.mean(np.abs(state)))
+    
+    def _is_high_stakes_paradox(self, state: np.ndarray) -> bool:
+        return np.any(np.isnan(state)) or np.max(np.abs(state)) > 10.0
+    
+    def _generalize_state(self, state: np.ndarray) -> np.ndarray:
+        return np.mean(state, keepdims=True) * np.ones_like(state)
