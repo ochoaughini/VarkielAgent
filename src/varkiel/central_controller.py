@@ -1,3 +1,9 @@
+"""
+Varkiel Agent - Advanced AI Constraint System
+Copyright (C) 2025 Lexsight LLC
+SPDX-License-Identifier: AGPL-3.0-only OR Commercial
+"""
+
 """Central Controller - Orchestrates cognitive processing layers
 
 This module coordinates the Structural Constraint Engine, Symbolic Coherence

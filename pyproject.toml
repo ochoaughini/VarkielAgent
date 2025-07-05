@@ -7,8 +7,10 @@ authors = [
 description = "Advanced AI Constraint System"
 readme = "README.md"
 requires-python = ">=3.9"
+license = {text = "AGPL-3.0-only OR Commercial"}
 classifiers = [
     "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
     "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
 ]

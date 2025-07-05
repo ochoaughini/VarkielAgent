@@ -106,6 +106,13 @@ Key Features
 
 ⸻
 
+## Licensing
+
+Varkiel Agent is available under dual licensing:
+
+- **AGPLv3**: For open-source use and community contributions
+- **Commercial License**: For proprietary integrations and enterprise use
+
 ## License Interaction
 
 Varkiel Agent is proprietary software, while the Constraint Lattice component is MIT licensed. This means:
