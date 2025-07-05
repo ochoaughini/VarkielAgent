@@ -76,6 +76,9 @@ class CentralController:
                 processing_time=time.time() - start_time
             )
             
+        except SafetyViolationError as e:
+            self.logger.error(f"Safety violation details: {e.details}")
+            raise
         except Exception as e:
             context = {
                 'input_text': input_text,

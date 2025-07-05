@@ -13,7 +13,9 @@ class GovernanceError(Exception):
 
 class SafetyViolationError(Exception):
     """Exception raised when safety thresholds are violated."""
-    pass
+    def __init__(self, message, details=None):
+        super().__init__(message)
+        self.details = details or message
 
 
 class CoherenceError(Exception):
