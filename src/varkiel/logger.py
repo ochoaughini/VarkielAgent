@@ -1,5 +1,13 @@
 import logging
 
+# Create a shared logger instance
+logger = logging.getLogger('varkiel')
+logger.setLevel(logging.INFO)
+handler = logging.FileHandler('varkiel.log')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
 class ReflectiveLogger:
     def __init__(self):
         self.logger = logging.getLogger('reflective')

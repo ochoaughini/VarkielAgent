@@ -8,6 +8,7 @@ Risk assessment and mitigation - Complete Implementation
 from typing import Dict
 from varkiel.state_vector import StateVector
 from varkiel.exceptions import SafetyViolationError  # Import SafetyViolationError
+from varkiel.logger import logger  # Import logger
 
 class RiskBalancer:
     def __init__(self, config: Dict):
@@ -15,6 +16,9 @@ class RiskBalancer:
         self.coherence_threshold = self.thresholds.get('coherence', 0)
         self.ethics_threshold = self.thresholds.get('ethics', 0)
         self.risk_factors = {k: v for k, v in self.thresholds.items() if k not in ['coherence', 'ethics', 'max_length']}
+        
+        # Log loaded thresholds
+        logger.info(f"Loaded risk thresholds: coherence={self.coherence_threshold}, ethics={self.ethics_threshold}, risk_factors={self.risk_factors}")
         
     def approve(self, state: StateVector) -> bool:
         """Approve the state based on risk thresholds"""
@@ -45,3 +49,14 @@ class RiskBalancer:
                 raise SafetyViolationError("Safety violation", details=violation)
                 
         return True
+
+    def get_violation_details(self, state: StateVector) -> Dict[str, float]:
+        """Return detailed metrics about why the output failed safety checks"""
+        return {
+            "ethics_score": state.metrics.get('ethics_score', 0),
+            "coherence_score": state.metrics.get('coherence_score', 0),
+            "risk_factors": {
+                factor: state.metrics.get(factor, 0) 
+                for factor in self.risk_factors
+            }
+        }

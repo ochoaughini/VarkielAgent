@@ -14,7 +14,7 @@
   },
   "symbolic": {
     "model": "all-mpnet-base-v2",
-    "coherence_threshold": 0.7
+    "coherence_threshold": 0.01
   },
   "lattice": {
     "endpoint": "https://api.constraint-lattice.example.com",
@@ -23,8 +23,9 @@
   },
   "risk": {
     "thresholds": {
-      "coherence": 0.5,
-      "max_length": 2000
+      "coherence": 0.01,
+      "ethics": 0.7,
+      "max_length": 1000
     }
   },
   "audit": {

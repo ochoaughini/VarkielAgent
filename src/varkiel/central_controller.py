@@ -66,7 +66,8 @@ class CentralController:
             
             # Final safety check
             if not self.components['risk'].approve(state):
-                raise SafetyViolationError("Output failed safety checks")
+                violation_details = self.components['risk'].get_violation_details(state)
+                raise SafetyViolationError("Output failed safety checks", details=violation_details)
                 
             return ProcessingResult(
                 output=state.text,
