@@ -31,4 +31,5 @@ src/varkiel/utils.py
 src/varkiel.egg-info/PKG-INFO
 src/varkiel.egg-info/SOURCES.txt
 src/varkiel.egg-info/dependency_links.txt
+src/varkiel.egg-info/requires.txt
 src/varkiel.egg-info/top_level.txt

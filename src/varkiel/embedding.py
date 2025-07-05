@@ -1,28 +1,31 @@
-from transformers import AutoTokenizer, AutoModel
+"""
+Varkiel Agent - Advanced AI Constraint System
+Copyright (C) 2025 Lexsight LLC
+SPDX-License-Identifier: AGPL-3.0-only OR Commercial
+"""
+
+from sentence_transformers import SentenceTransformer
 import torch
 import numpy as np
+import time
 
 class SymbolicEmbedder:
     """Dense semantic embedding using transformer models"""
-    def __init__(self, model_name='sentence-transformers/all-mpnet-base-v2'):
-        # Lazy import heavy transformers
-        from transformers import AutoTokenizer, AutoModel
-        import torch
+    def __init__(self, model_name: str = 'all-mpnet-base-v2'):
+        self.model = SentenceTransformer(model_name)
+        self.last_processing_time = 0.0
         
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name)
-        
-    def embed_text(self, text: str) -> np.ndarray:
-        """Generate 768-dimensional semantic embeddings"""
-        inputs = self.tokenizer(text, return_tensors="pt", 
-                              padding=True, truncation=True, 
-                              max_length=512)
-        with torch.no_grad():
-            outputs = self.model(**inputs)
-        # Mean pooling with attention masking
-        token_embeddings = outputs.last_hidden_state
-        input_mask = inputs['attention_mask']
-        token_embeddings = token_embeddings * input_mask.unsqueeze(-1).float()
-        sum_embeddings = torch.sum(token_embeddings, dim=1)
-        sum_mask = torch.clamp(input_mask.sum(dim=1), min=1e-9)
-        return (sum_embeddings / sum_mask.unsqueeze(-1)).squeeze().numpy()
+    def embed(self, text: str) -> np.ndarray:
+        """Generate embedding for input text"""
+        start_time = time.time()
+        embedding = self.model.encode(text)
+        self.last_processing_time = time.time() - start_time
+        return embedding
+
+    def batch_embed(self, texts: list) -> np.ndarray:
+        """Generate embeddings for a batch of texts"""
+        return np.vstack([self.embed(text) for text in texts])
+
+    def __call__(self, text: str) -> np.ndarray:
+        """Alias for embed()"""
+        return self.embed(text)

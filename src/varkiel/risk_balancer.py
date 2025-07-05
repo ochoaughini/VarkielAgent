@@ -1,13 +1,25 @@
-from state_vector import StateVector
-from typing import Optional
+"""
+Varkiel Agent - Advanced AI Constraint System
+SPDX-License-Identifier: AGPL-3.0-only OR Commercial
+
+Risk assessment and mitigation - Complete Implementation
+"""
+
+from typing import Dict
+from varkiel.state_vector import StateVector
 
 class RiskBalancer:
-    def __init__(self, coherence_threshold: float = 0.7):
-        self.coherence_threshold = coherence_threshold
+    def __init__(self, config: Dict):
+        self.thresholds = config.get('thresholds', {})
         
-    def allow_inference(self, state_vector: StateVector) -> bool:
-        """Determine if inference is allowed based on coherence."""
-        return state_vector.coherence >= self.coherence_threshold
-    
-    def adjust_threshold(self, risk_level: float):
-        self.coherence_threshold = max(0.5, min(0.9, 0.7 + (risk_level - 0.5) * 0.4))
+    def approve(self, state: StateVector) -> bool:
+        """Determine if output meets safety thresholds"""
+        # Check coherence threshold
+        if 'coherence' in self.thresholds and state.metrics.get('coherence', 0) < self.thresholds['coherence']:
+            return False
+            
+        # Check output length threshold
+        if 'max_length' in self.thresholds and len(state.text) > self.thresholds['max_length']:
+            return False
+            
+        return True

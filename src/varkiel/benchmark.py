@@ -1,4 +1,10 @@
-"""Comprehensive performance benchmark for Varkiel Agent with paradox probes"""
+"""
+Varkiel Agent - Advanced AI Constraint System
+Copyright (C) 2025 Lexsight LLC
+SPDX-License-Identifier: AGPL-3.0-only OR Commercial
+
+Comprehensive performance benchmark for Varkiel Agent with paradox probes
+"""
 import time
 import numpy as np
 import matplotlib.pyplot as plt

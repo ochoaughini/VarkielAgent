@@ -1,0 +1,12 @@
+numpy>=1.21.0
+scipy>=1.7.0
+requests>=2.26.0
+tenacity>=8.0.0
+pydantic>=1.9.0
+sentence-transformers>=2.2.0
+
+[dev]
+pytest>=7.0.0
+flake8>=4.0.0
+mypy>=0.910
+pytest-cov>=3.0.0

@@ -20,6 +20,7 @@ import uuid
 import logging
 from typing import Optional
 from state_vector import StateVector  # Ensure this import exists
+from collections import deque
 
 class PatternResonanceVectors:
     """Represents memory engrams as dynamically evolving resonance vectors.
@@ -72,15 +73,16 @@ class PatternResonanceVectors:
 class PhenomenologicalTracker:
     """Tracks phenomenological state across sessions"""
     
-    def __init__(self, embedding_dim=768, latent_dim=128, lattice_wrapper=None) -> None:
-        self.embedding_dim = embedding_dim
-        self.latent_dim = latent_dim
-        self.state_dim = latent_dim  # Use latent dimension for state vectors
-        # Initialize PCA with dummy data
-        dummy_data = np.random.rand(51, self.state_dim)  # Generate 51 samples to exceed n_components=50
-        self.pca = IncrementalPCA(n_components=min(50, self.state_dim, 1000))
-        self.pca.partial_fit(dummy_data)
-        self.resonance_history = []
+    def __init__(self, config: dict = None) -> None:
+        # Extract parameters from config or use defaults
+        self.embedding_dim = config.get('embedding_dim', 768) if config else 768
+        self.latent_dim = config.get('latent_dim', 128) if config else 128
+        
+        # Initialize PCA later when we have enough samples
+        self.pca = None
+        self.embedding_history = deque(maxlen=1000)
+        self.resonance_history = deque(maxlen=1000)
+        self.state_dim = self.latent_dim  # Desired state dimension
         self.session_history = {}
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
@@ -91,34 +93,53 @@ class PhenomenologicalTracker:
         self.logger.info("Initialized PhenomenologicalTracker")
         self.current_session = str(uuid.uuid4())  # Start a new session by default
         self.valence_map = {self.current_session: []}  # Map session id to list of resonance vectors
-        self.lattice_wrapper = lattice_wrapper
+        self.lattice_wrapper = config.get('lattice_wrapper') if config else None
 
     def calibrate_space(self, embedding_matrix: np.ndarray):
         """Calibrate PCA with initial embeddings"""
+        if self.pca is None:
+            self.pca = IncrementalPCA(n_components=self.state_dim)
         self.pca.partial_fit(embedding_matrix)
         
     def project_to_semantic_space(self, vector: np.ndarray) -> np.ndarray:
         """Project to calibrated phenomenological space"""
+        if self.pca is None:
+            # Return zeros if PCA not initialized
+            return np.zeros(self.state_dim)
         return self.pca.transform(vector.reshape(1, -1))[0]
     
     def update_resonance(self, coherent_input: np.ndarray, coherence: float) -> np.ndarray:
         """Track phenomenological state and return the resonance vector for the current input"""
         try:
+            # Store the original embedding
+            self.embedding_history.append(coherent_input)
+            
+            # If we haven't initialized PCA, check if we have enough samples
+            if self.pca is None:
+                if len(self.embedding_history) >= 51:
+                    # Initialize PCA with the accumulated samples
+                    self.pca = IncrementalPCA(n_components=min(51, self.state_dim))
+                    self.pca.partial_fit(np.array(self.embedding_history))
+                else:
+                    # Not enough samples, return a zero vector for now
+                    return np.zeros(self.state_dim)
+            
+            # Update PCA with the new sample
+            self.pca.partial_fit(coherent_input.reshape(1, -1))
+            
+            # Project to state vector
             projected = self.project_to_semantic_space(coherent_input)
+            
+            # Append to resonance history (state vectors)
             self.resonance_history.append(projected)
-            # Maintain fixed-length history
-            if len(self.resonance_history) > 1000:
-                self.resonance_history.pop(0)
-            # Ensure current session exists in valence_map
-            if self.current_session not in self.valence_map:
-                self.valence_map[self.current_session] = []
-            self.valence_map[self.current_session].append(coherent_input)
-            # Wrap state in StateVector with coherence metadata
-            state_vector = StateVector(projected, coherence_level=coherence)
-            return state_vector
+            
+            # Update valence with coherence score
+            self.valence_history.append(coherence)
+            
+            return projected
         except Exception as e:
             self.logger.error(f"State tracking failed: {str(e)}")
-            return np.zeros((1,))
+            raise
 
     def start_new_session(self, session_id: Optional[str] = None) -> str:
         """Start a new session, returns the session id"""
@@ -156,35 +177,15 @@ class PhenomenologicalTracker:
         
         return np.array(similarities)
 
-    def track_state(self, state: np.ndarray) -> None:
-        """Track a state vector"""
-        self.resonance_history.append(state)
-        
-        # Check if we have enough states to update
-        if len(self.resonance_history) >= 1000:
-            states = np.array(self.resonance_history[-1000:])
-            
-            # Update PCA
-            self.pca.partial_fit(states)
-            
-            # Only compute if PCA is fitted
-            if hasattr(self.pca, 'components_'):
-                # Compute the projection on the principal components
-                projection = self.pca.transform(states)
-                
-                # Compute the rate of change in the projection space
-                if len(projection) > 1:
-                    diff = np.diff(projection, axis=0)
-                    velocity = np.linalg.norm(diff, axis=1).mean()
-                    
-                    # Update suspension level based on velocity
-                    self.suspension_level = max(0.0, min(1.0, velocity * 10.0))
-                    
-                    # Log suspension level
-                    self.logger.info(f"Suspension level updated: {self.suspension_level:.2f}")
-                else:
-                    self.logger.warning("Not enough states to compute velocity")
-            else:
-                self.logger.warning("PCA not fitted yet")
-        else:
-            self.logger.info(f"Collecting states: {len(self.resonance_history)}/1000")
+    def track_state(self, state: StateVector) -> StateVector:
+        """Track a state vector and update resonance history"""
+        # Use original_embeddings if available, else embeddings
+        embeddings_to_use = state.original_embeddings if state.original_embeddings.size > 0 else state.embeddings
+        coherent_input = embeddings_to_use
+        self.update_resonance(coherent_input, state.coherence_score)
+        # Store in session history
+        self.valence_map[self.current_session].append(coherent_input)
+        # Update state with resonance vector
+        state.add_metric('resonance_vector', coherent_input.tolist())
+        # Return updated state
+        return state

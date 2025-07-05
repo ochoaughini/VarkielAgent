@@ -6,9 +6,14 @@ SPDX-License-Identifier: AGPL-3.0-only OR Commercial
 
 import numpy as np
 import collections  # Added for BFS implementation
-from typing import Optional, Tuple, Dict, List
+from typing import Optional, Tuple, Dict, List, Any
 from enum import Enum
-from structural_constraint_engine import ConstraintType, StateVector  # Import constraint types and StateVector
+from structural_constraint_engine import ConstraintType  # Import constraint types
+from varkiel.state_vector import StateVector  # Import StateVector
+import requests
+import time
+from tenacity import retry, stop_after_attempt, wait_exponential
+from .exceptions import GovernanceError
 
 # Mock classes for testing
 class Node:
@@ -199,3 +204,49 @@ class ConstraintLatticeAdapter:
     
     def _generalize_state(self, state: np.ndarray) -> np.ndarray:
         return np.mean(state, keepdims=True) * np.ones_like(state)
+
+class ConstraintLatticeAdapterRemote:
+    def __init__(self, endpoint: str, api_key: str, timeout: int = 30):
+        self.base_url = f"{endpoint.rstrip('/')}/v1/govern"
+        self.api_key = api_key
+        self.timeout = timeout
+        self.session = requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        })
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry_error_callback=lambda _: GovernanceError("Max retries exceeded")
+    )
+    def govern(self, text: str, profile: str = "default") -> Dict[str, Any]:
+        """Apply governance constraints with automatic retry logic"""
+        try:
+            start_time = time.time()
+            response = self.session.post(
+                f"{self.base_url}",
+                json={
+                    "text": text,
+                    "profile": profile,
+                    "metadata": {
+                        "source": "varkiel",
+                        "version": "1.0"
+                    }
+                },
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            result = response.json()
+            result['processing_time'] = time.time() - start_time
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            raise GovernanceError(f"Governance service error: {str(e)}")
+        except (KeyError, ValueError) as e:
+            raise GovernanceError(f"Invalid response from governance service: {str(e)}")
+
+    def __del__(self):
+        self.session.close()
