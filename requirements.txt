@@ -1,0 +1,17 @@
+numpy==1.26.4
+sympy
+torch
+networkx
+scipy
+flask
+flask-login
+pytest==8.4.1
+hypothesis==6.135.26
+pytest-cov
+safety
+bandit
+gunicorn
+prometheus_client==0.20.0
+scikit-learn==1.5.0
+matplotlib
+# Removed heroku as it's not available for Python 3.12+
